@@ -11,13 +11,16 @@ const utils = require('./utils');
 
 const httpTester = /^(http(s)?:)?\/\//;
 
-const fixUrl = (req, url, publicUrl, opt_nokey) => {
+const fixUrl = (req, url, publicUrl, opt_nokey, noversion) => {
   if (!url || (typeof url !== 'string') || url.indexOf('local://') !== 0) {
     return url;
   }
   const queryParams = [];
   if (!opt_nokey && req.query.key) {
     queryParams.unshift(`key=${req.query.key}`);
+  }
+  if (!noversion && req.query.version) {
+    queryParams.push('v' + req.query.version);
   }
   let query = '';
   if (queryParams.length) {
@@ -43,7 +46,7 @@ module.exports = {
       }
       // mapbox-gl-js viewer cannot handle sprite urls with query
       if (styleJSON_.sprite) {
-        styleJSON_.sprite = fixUrl(req, styleJSON_.sprite, item.publicUrl, true);
+        styleJSON_.sprite = fixUrl(req, styleJSON_.sprite + (req.query.version ? '-v' + req.query.version : ''), item.publicUrl, true, true);
       }
       if (styleJSON_.glyphs) {
         styleJSON_.glyphs = fixUrl(req, styleJSON_.glyphs, item.publicUrl, false);
@@ -51,7 +54,7 @@ module.exports = {
       return res.send(styleJSON_);
     });
 
-    app.get('/:id/sprite:scale(@[23]x)?.:format([\\w]+)', (req, res, next) => {
+    app.get('/:id/sprite(-v\\d+)?:scale(@[23]x)?.:format([\\w]+)', (req, res, next) => {
       const item = repo[req.params.id];
       if (!item || !item.spritePath) {
         return res.sendStatus(404);
